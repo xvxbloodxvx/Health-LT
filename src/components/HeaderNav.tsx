@@ -29,7 +29,12 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   const isViewingToday = selectedDate === todayISO;
 
   return (
-    <header className="sticky top-0 z-40 bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-800/80 px-4 py-2.5 sm:py-3 shadow-md">
+    <header
+      style={{
+        paddingTop: 'max(0.625rem, calc(env(safe-area-inset-top, 0px) + 0.25rem))',
+      }}
+      className="sticky top-0 z-40 bg-[#09090b]/95 backdrop-blur-md border-b border-zinc-800/80 px-4 pb-2.5 sm:pb-3 shadow-md pt-safe"
+    >
       <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5">
         {/* Date Navigator */}
         <div className="flex items-center space-x-2">

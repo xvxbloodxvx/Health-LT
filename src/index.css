@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 @layer utilities {
+  .pt-safe {
+    padding-top: max(0.625rem, calc(env(safe-area-inset-top, 0px) + 0.25rem));
+  }
   .pb-safe {
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 16px));
   }
