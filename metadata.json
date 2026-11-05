@@ -1,0 +1,8 @@
+{
+  "name": "Health LT",
+  "description": "Weiguo's health Logging and Tracking",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

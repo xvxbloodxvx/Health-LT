@@ -1,0 +1,6 @@
+{
+  "summary": "Updated implementation plan to resolve the default white rice fallback for unrecognized items like psyllium husk, chia seeds, and Meiji Green Tea Protein Shake. Extends Gemini timeout to 10s, adds specific benchmarks for seeds/fiber/protein shakes, and eliminates the default white rice fallback so unknown items retain their true identity and realistic estimates.",
+  "updatedAt": "2026-11-02T20:43:13.948589487Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

@@ -1,0 +1,1217 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import {
+  Activity, Dumbbell, Utensils, Database, Bot, Settings,
+  Flame, ShieldAlert, CheckCircle2, Clock, Plus, Trash2,
+  ChevronDown, ChevronUp, RefreshCw, Play, Volume2, Camera,
+  Calendar, ChevronLeft, ChevronRight, Sparkles, Moon, Sun, ArrowUpRight
+} from 'lucide-react';
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  BarChart, Bar, ReferenceLine
+} from 'recharts';
+
+// =========================================================================
+// 1. PRE-SEEDED HISTORICAL LEDGER & SEED BENCHMARKS
+// =========================================================================
+const INITIAL_BENCHMARKS = {
+  day_1: {
+    circuit: [
+      { round: 1, plank_sec: 50, pullup_reps: 4, chinup_reps: 2, rest_sec: 90 },
+      { round: 2, plank_sec: 50, pullup_reps: 4, chinup_reps: 1, rest_sec: 90 },
+      { round: 3, plank_sec: 50, pullup_reps: 3, chinup_reps: 1, rest_sec: 90 },
+    ],
+    inclined_chin_ups: [
+      { set: 1, reps: 5, rest_sec: 90 },
+      { set: 2, reps: 5, rest_sec: 90 },
+      { set: 3, reps: 5, rest_sec: 90 },
+    ]
+  },
+  day_2: {
+    slow_squats: [{ set: 1, reps: 20 }, { set: 2, reps: 20 }, { set: 3, reps: 20 }],
+    incline_pushups: [{ set: 1, reps: 10 }, { set: 2, reps: 10 }, { set: 3, reps: 10 }],
+    bench_dips: [{ set: 1, reps: 8 }, { set: 2, reps: 8 }, { set: 3, reps: 8 }],
+    decline_situps: [{ set: 1, reps: 12 }, { set: 2, reps: 12 }, { set: 3, reps: 12 }]
+  },
+  day_3: {
+    bed_goblet_squats: [{ set: 1, reps: 12, weight_kg: 5 }, { set: 2, reps: 12, weight_kg: 5 }, { set: 3, reps: 12, weight_kg: 5 }],
+    knee_raises: [{ set: 1, reps: 15 }, { set: 2, reps: 15 }, { set: 3, reps: 15 }],
+    clamshell_side_raises: [{ set: 1, reps: 12 }, { set: 2, reps: 12 }, { set: 3, reps: 12 }],
+    deadbugs: [{ set: 1, reps: 12 }, { set: 2, reps: 12 }, { set: 3, reps: 12 }]
+  }
+};
+
+const SEED_LEDGER = {
+  "2026-08-20": { weight_kg: 99.00, notes: "Baseline Anchor" },
+  "2026-10-11": { weight_kg: 91.85, calories: 1298, protein: 147.1, net_carbs: 15.6, fiber: 36.0, sodium: 2400, potassium: 3100, magnesium: 420, sleep_hours: 5.1, waking_count: 2, bm_count: 2, shift: "AM Work" },
+  "2026-10-12": { weight_kg: 90.85, calories: 1919, protein: 178.8, net_carbs: 35.1, fiber: 38.0, sodium: 2600, potassium: 3300, magnesium: 430, sleep_hours: 5.8, waking_count: 1, bm_count: 0, shift: "AM Work" },
+  "2026-10-13": { weight_kg: 91.95, calories: 1347, protein: 167.6, net_carbs: 27.0, fiber: 35.0, sodium: 2300, potassium: 3200, magnesium: 410, sleep_hours: 5.8, waking_count: 1, bm_count: 0, shift: "Standby" },
+  "2026-10-14": { weight_kg: 91.45, calories: 1437, protein: 93.0,  net_carbs: 22.8, fiber: 37.0, sodium: 2500, potassium: 3000, magnesium: 400, sleep_hours: 5.5, waking_count: 2, bm_count: 1, shift: "Off" },
+  "2026-10-15": { weight_kg: 91.15, calories: 1403, protein: 90.2,  net_carbs: 24.6, fiber: 36.0, sodium: 2200, potassium: 2900, magnesium: 415, sleep_hours: 4.0, waking_count: 1, bm_count: 2, shift: "AM Work" },
+  "2026-10-16": { weight_kg: 90.60, calories: 1475, protein: 164.6, net_carbs: 29.4, fiber: 39.0, sodium: 2700, potassium: 3400, magnesium: 435, sleep_hours: 9.3, waking_count: 2, bm_count: 1, shift: "AM Work" },
+  "2026-10-17": { weight_kg: 90.40, calories: 1302, protein: 145.3, net_carbs: 20.4, fiber: 34.0, sodium: 2100, potassium: 3100, magnesium: 405, sleep_hours: 7.75, waking_count: 0, bm_count: 1, shift: "Standby" },
+  "2026-10-18": { weight_kg: 90.15, calories: 1480, protein: 115.2, net_carbs: 45.3, fiber: 38.0, sodium: 2450, potassium: 3050, magnesium: 410, sleep_hours: 4.6, waking_count: 0, bm_count: 1, shift: "Off" },
+  "2026-10-19": { weight_kg: 89.85, calories: 1407, protein: 153.1, net_carbs: 30.7, fiber: 36.5, sodium: 2550, potassium: 3250, magnesium: 425, sleep_hours: 6.0, waking_count: 2, bm_count: 1, shift: "PM Work" },
+  "2026-10-20": { weight_kg: 89.60, calories: 1441, protein: 147.8, net_carbs: 26.5, fiber: 35.0, sodium: 2400, potassium: 3300, magnesium: 420, sleep_hours: 5.0, waking_count: 1, bm_count: 1, shift: "PM Work" },
+  "2026-10-21": { weight_kg: 89.50, calories: 1498, protein: 152.8, net_carbs: 33.0, fiber: 37.0, sodium: 2650, potassium: 3150, magnesium: 430, sleep_hours: null, waking_count: 0, bm_count: 0, shift: "Rest" },
+  "2026-10-22": { weight_kg: 89.90, calories: 1385, protein: 105.4, net_carbs: 30.2, fiber: 36.0, sodium: 2300, potassium: 2950, magnesium: 415, sleep_hours: 4.75, waking_count: 1, bm_count: 1, shift: "Standby" },
+  "2026-10-23": { weight_kg: 89.35, calories: 1434, protein: 107.1, net_carbs: 27.0, fiber: 35.5, sodium: 2400, potassium: 3000, magnesium: 410, sleep_hours: null, waking_count: 0, bm_count: null, shift: "PM Work" },
+  "2026-10-24": { weight_kg: 89.20, calories: 1499, protein: 154.0, net_carbs: 29.3, fiber: 38.0, sodium: 2550, potassium: 3350, magnesium: 425, sleep_hours: 9.0, waking_count: 2, bm_count: 2, shift: "PM Work" },
+  "2026-10-25": { weight_kg: 89.45, calories: 1476, protein: 118.1, net_carbs: 35.5, fiber: 38.4, sodium: 2562, potassium: 2950, magnesium: 425, sleep_hours: null, waking_count: 0, bm_count: null, shift: "Rest" },
+  "2026-10-26": { weight_kg: 89.45, calories: 1530, protein: 152.4, net_carbs: 29.4, fiber: 32.3, sodium: 2858, potassium: 3405, magnesium: 421, sleep_hours: null, waking_count: 0, bm_count: null, shift: "Standby" },
+  "2026-10-27": { weight_kg: 89.20, calories: 1110, protein: 96.8,  net_carbs: 34.5, fiber: 40.2, sodium: 1548, potassium: 2940, magnesium: 438, sleep_hours: 7.0, waking_count: 0, bm_count: 2, shift: "PM Work" },
+  "2026-10-28": { weight_kg: 88.55, calories: 1641, protein: 159.6, net_carbs: 40.5, fiber: 36.0, sodium: 2600, potassium: 3200, magnesium: 420, sleep_hours: 5.25, waking_count: 1, bm_count: 2, shift: "PM Work" },
+  "2026-10-29": { weight_kg: 88.90, calories: 1513, protein: 160.6, net_carbs: 41.0, fiber: 38.4, sodium: 2478, potassium: 3427, magnesium: 519, sleep_hours: 7.38, waking_count: 3, bm_count: 2, shift: "Rest" },
+  "2026-10-30": { weight_kg: 89.30, calories: 1395, protein: 146.6, net_carbs: 34.7, fiber: 37.0, sodium: 2350, potassium: 3100, magnesium: 415, sleep_hours: 5.58, waking_count: 0, bm_count: 2, shift: "Standby" },
+  "2026-10-31": { weight_kg: 88.90, calories: 1299, protein: 108.1, net_carbs: 27.1, fiber: 35.0, sodium: 2200, potassium: 2900, magnesium: 410, sleep_hours: 5.08, waking_count: 2, bm_count: null, shift: "PM Work" },
+  "2026-11-01": { weight_kg: 88.90, calories: 2098, protein: 95.2,  net_carbs: 44.2, fiber: 38.0, sodium: 2700, potassium: 3150, magnesium: 430, sleep_hours: 9.75, waking_count: 0, bm_count: null, shift: "PM Work" },
+  "2026-11-02": { weight_kg: 88.90, calories: 1235, protein: 139.4, net_carbs: 30.9, fiber: 36.2, sodium: 2410, potassium: 3280, magnesium: 425, sleep_hours: 6.5, waking_count: 1, bm_count: 1, shift: "Rest" }
+};
+
+// =========================================================================
+// 2. WEB AUDIO & UTILITIES
+// =========================================================================
+const playBeep = () => {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.35);
+  } catch (err) {
+    console.warn("Audio Context unavailable:", err);
+  }
+};
+
+// Free Tier Gemini Flash Direct Client
+async function callGemini(apiKey, prompt, base64Image = null) {
+  if (!apiKey) throw new Error("Please add your Gemini API Key in the Settings tab.");
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+  const contents = [];
+  if (base64Image) {
+    contents.push({
+      parts: [
+        { text: prompt },
+        { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+      ]
+    });
+  } else {
+    contents.push({ parts: [{ text: prompt }] });
+  }
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents })
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err?.error?.message || "Gemini Flash Request Failed");
+  }
+
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
+// =========================================================================
+// 3. MAIN APPLICATION COMPONENT
+// =========================================================================
+export default function HealthApp() {
+  // Navigation & Date
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard | log | workout | pantry | advisor | settings
+  const [selectedDate, setSelectedDate] = useState("2026-11-02");
+  
+  // Persistent State (LocalStorage + Fallback)
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+  const [pantry, setPantry] = useState(() => JSON.parse(localStorage.getItem('user_pantry') || '[]'));
+  const [ledger, setLedger] = useState(() => {
+    const saved = localStorage.getItem('master_ledger');
+    return saved ? JSON.parse(saved) : SEED_LEDGER;
+  });
+  const [benchmarks, setBenchmarks] = useState(() => {
+    const saved = localStorage.getItem('routine_benchmarks');
+    return saved ? JSON.parse(saved) : INITIAL_BENCHMARKS;
+  });
+
+  // Current Day Log State
+  const currentDay = useMemo(() => ledger[selectedDate] || {
+    weight_kg: null,
+    calories: 0,
+    protein: 0,
+    net_carbs: 0,
+    fiber: 0,
+    fat: 0,
+    sodium: 0,
+    potassium: 0,
+    magnesium: 0,
+    calcium: 0,
+    sleep_hours: null,
+    split_sleep: 0,
+    waking_count: 0,
+    bm_count: 0,
+    shift: "Off",
+    meals: { meal_1: [], meal_2: [], meal_3: [] }
+  }, [ledger, selectedDate]);
+
+  // Rest Timer State (Timestamp-based for iOS Safari background stability)
+  const [restTimer, setRestTimer] = useState({ active: false, targetTime: null, secondsLeft: 0, label: '' });
+
+  // Input Box States
+  const [mealInput, setMealInput] = useState({ targetMeal: 'meal_1', text: '' });
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Label Scanning Modal
+  const [ocrModal, setOcrModal] = useState({ open: false, item: null, isProcessing: false });
+
+  // Save to LocalStorage on changes
+  useEffect(() => {
+    localStorage.setItem('master_ledger', JSON.stringify(ledger));
+  }, [ledger]);
+
+  useEffect(() => {
+    localStorage.setItem('user_pantry', JSON.stringify(pantry));
+  }, [pantry]);
+
+  useEffect(() => {
+    localStorage.setItem('routine_benchmarks', JSON.stringify(benchmarks));
+  }, [benchmarks]);
+
+  useEffect(() => {
+    localStorage.setItem('gemini_api_key', apiKey);
+  }, [apiKey]);
+
+  // Timer Tick Engine
+  useEffect(() => {
+    if (!restTimer.active || !restTimer.targetTime) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((restTimer.targetTime - Date.now()) / 1000));
+      if (remaining <= 0) {
+        playBeep();
+        setRestTimer({ active: false, targetTime: null, secondsLeft: 0, label: '' });
+        clearInterval(interval);
+      } else {
+        setRestTimer(prev => ({ ...prev, secondsLeft: remaining }));
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [restTimer.active, restTimer.targetTime]);
+
+  // Date Navigator Helpers
+  const shiftDate = (days) => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + days);
+    setSelectedDate(d.toISOString().split('T')[0]);
+  };
+
+  const updateCurrentDay = (field, value) => {
+    setLedger(prev => ({
+      ...prev,
+      [selectedDate]: {
+        ...(prev[selectedDate] || currentDay),
+        [field]: value
+      }
+    }));
+  };
+
+  const startRestTimer = (seconds, label = 'Rest') => {
+    setRestTimer({
+      active: true,
+      targetTime: Date.now() + seconds * 1000,
+      secondsLeft: seconds,
+      label
+    });
+  };
+
+  // =========================================================================
+  // PANTRY & AUTOCOMPLETE ENGINE
+  // =========================================================================
+  const handleMealTextChange = (text) => {
+    setMealInput(prev => ({ ...prev, text }));
+    if (!text.trim() || pantry.length === 0) {
+      setAutocompleteSuggestions([]);
+      return;
+    }
+    const query = text.toLowerCase();
+    const matches = pantry.filter(item => item.name.toLowerCase().includes(query));
+    setAutocompleteSuggestions(matches.slice(0, 4));
+  };
+
+  const addPantryItemToMeal = (pantryItem, grams = 100) => {
+    const factor = grams / (pantryItem.base_grams || 100);
+    const lineItem = {
+      id: Date.now().toString(),
+      name: `${pantryItem.name} (${grams}g)`,
+      calories: Math.round(pantryItem.calories * factor),
+      protein: Number((pantryItem.protein * factor).toFixed(1)),
+      net_carbs: Number((pantryItem.net_carbs * factor).toFixed(1)),
+      fiber: Number(((pantryItem.fiber || 0) * factor).toFixed(1)),
+      fat: Number(((pantryItem.fat || 0) * factor).toFixed(1)),
+      sodium: Math.round((pantryItem.sodium || 0) * factor),
+      potassium: Math.round((pantryItem.potassium || 0) * factor),
+      magnesium: Math.round((pantryItem.magnesium || 0) * factor),
+      calcium: Math.round((pantryItem.calcium || 0) * factor),
+      source: "verified_pantry"
+    };
+
+    const target = mealInput.targetMeal;
+    const existing = currentDay.meals?.[target] || [];
+    const updatedMeals = {
+      ...(currentDay.meals || { meal_1: [], meal_2: [], meal_3: [] }),
+      [target]: [...existing, lineItem]
+    };
+
+    recalculateDayNutrition(updatedMeals);
+    setMealInput({ targetMeal: target, text: '' });
+    setAutocompleteSuggestions([]);
+  };
+
+  const recalculateDayNutrition = (updatedMeals) => {
+    let cal = 0, p = 0, nc = 0, fib = 0, f = 0, na = 0, k = 0, mg = 0, ca = 0;
+    Object.values(updatedMeals).forEach(mealArray => {
+      mealArray.forEach(item => {
+        cal += item.calories || 0;
+        p += item.protein || 0;
+        nc += item.net_carbs || 0;
+        fib += item.fiber || 0;
+        f += item.fat || 0;
+        na += item.sodium || 0;
+        k += item.potassium || 0;
+        mg += item.magnesium || 0;
+        ca += item.calcium || 0;
+      });
+    });
+
+    setLedger(prev => ({
+      ...prev,
+      [selectedDate]: {
+        ...(prev[selectedDate] || currentDay),
+        calories: Math.round(cal),
+        protein: Number(p.toFixed(1)),
+        net_carbs: Number(nc.toFixed(1)),
+        fiber: Number(fib.toFixed(1)),
+        fat: Number(f.toFixed(1)),
+        sodium: Math.round(na),
+        potassium: Math.round(k),
+        magnesium: Math.round(mg),
+        calcium: Math.round(ca),
+        meals: updatedMeals
+      }
+    }));
+  };
+
+  // AI Meal Parsing (for non-pantry natural language)
+  const parseMealWithGemini = async () => {
+    if (!mealInput.text.trim()) return;
+    setIsLoading(true);
+    try {
+      const prompt = `You are a nutrition parser for a Modified Ketogenic protocol.
+Official food composition data (USDA FoodData Central / Gov bodies) must ground all nutrient estimations.
+Parse the following meal text: "${mealInput.text}".
+Return ONLY a valid JSON object matching this schema:
+{
+  "name": "Summary of item",
+  "calories": number,
+  "protein": number,
+  "net_carbs": number,
+  "fiber": number,
+  "fat": number,
+  "sodium": number (mg),
+  "potassium": number (mg),
+  "magnesium": number (mg),
+  "calcium": number (mg)
+}`;
+      const raw = await callGemini(apiKey, prompt);
+      const cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+
+      const lineItem = {
+        id: Date.now().toString(),
+        name: parsed.name,
+        calories: Math.round(parsed.calories || 0),
+        protein: Number((parsed.protein || 0).toFixed(1)),
+        net_carbs: Number((parsed.net_carbs || 0).toFixed(1)),
+        fiber: Number((parsed.fiber || 0).toFixed(1)),
+        fat: Number((parsed.fat || 0).toFixed(1)),
+        sodium: Math.round(parsed.sodium || 0),
+        potassium: Math.round(parsed.potassium || 0),
+        magnesium: Math.round(parsed.magnesium || 0),
+        calcium: Math.round(parsed.calcium || 0),
+        source: "ai_estimated"
+      };
+
+      const target = mealInput.targetMeal;
+      const existing = currentDay.meals?.[target] || [];
+      const updatedMeals = {
+        ...(currentDay.meals || { meal_1: [], meal_2: [], meal_3: [] }),
+        [target]: [...existing, lineItem]
+      };
+      recalculateDayNutrition(updatedMeals);
+      setMealInput({ targetMeal: target, text: '' });
+    } catch (e) {
+      alert("AI Parsing error: " + e.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Nutrition Label OCR Scanner
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = reader.result.split(',')[1];
+      setOcrModal({ open: true, item: null, isProcessing: true });
+      try {
+        const prompt = `Inspect this nutrition fact panel.
+Extract exact declared numbers per 100g or per serving.
+For unlisted minerals (like potassium or magnesium), only estimate if verified in USDA/Gov composition databases, otherwise report 0.
+Return ONLY valid JSON:
+{
+  "name": "Product Name",
+  "base_grams": 100,
+  "calories": number,
+  "protein": number,
+  "net_carbs": number,
+  "fiber": number,
+  "fat": number,
+  "sodium": number (mg),
+  "potassium": number (mg),
+  "magnesium": number (mg),
+  "calcium": number (mg)
+}`;
+        const raw = await callGemini(apiKey, prompt, base64Data);
+        const cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+        const extracted = JSON.parse(cleaned);
+        setOcrModal({ open: true, item: extracted, isProcessing: false });
+      } catch (err) {
+        alert("OCR parsing failed: " + err.message);
+        setOcrModal({ open: false, item: null, isProcessing: false });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Historical Chart Data (30-day view)
+  const chartData = useMemo(() => {
+    return Object.entries(ledger)
+      .map(([d, val]) => ({
+        date: d.slice(5), // MM-DD
+        weight: val.weight_kg || null,
+        net_carbs: val.net_carbs || 0,
+        protein: val.protein || 0,
+        calories: val.calories || 0
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-30);
+  }, [ledger]);
+
+  return (
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans pb-24 md:pb-6 select-none">
+      
+      {/* =========================================================================
+          TOP BAR & ACTIVE SHIFT CYCLE HEADER
+      ========================================================================= */}
+      <header className="sticky top-0 z-40 bg-[#09090b]/90 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <button onClick={() => shiftDate(-1)} className="p-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white">
+              <ChevronLeft size={18} />
+            </button>
+            <div className="text-center px-1">
+              <div className="text-sm font-semibold tracking-wide text-zinc-200">{selectedDate}</div>
+              <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">Active Shift Cycle</div>
+            </div>
+            <button onClick={() => shiftDate(1)} className="p-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white">
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          {/* Shift Tag Switcher */}
+          <div className="flex items-center space-x-1 bg-zinc-900/90 p-1 rounded-lg border border-zinc-800 text-xs font-medium">
+            {["AM Work", "PM Work", "Standby", "Rest"].map((tag) => (
+              <button
+                key={tag}
+                onClick={() => updateCurrentDay("shift", tag)}
+                className={`px-2.5 py-1 rounded-md transition-all ${
+                  currentDay.shift === tag
+                    ? "bg-zinc-100 text-zinc-950 font-semibold shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* =========================================================================
+          REST TIMER BANNER (Floating if Active)
+      ========================================================================= */}
+      {restTimer.active && (
+        <div className="sticky top-14 z-30 bg-emerald-950/90 border-b border-emerald-800/80 px-4 py-2 flex items-center justify-between animate-pulse">
+          <div className="flex items-center space-x-2 text-emerald-300">
+            <Clock size={16} />
+            <span className="text-xs font-mono font-medium">{restTimer.label}: {restTimer.secondsLeft}s remaining</span>
+          </div>
+          <button
+            onClick={() => setRestTimer({ active: false, targetTime: null, secondsLeft: 0, label: '' })}
+            className="text-xs text-emerald-400 hover:text-emerald-200 font-mono"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* =========================================================================
+          CORE VITAL HUD (Pinned at top of content)
+      ========================================================================= */}
+      <section className="bg-zinc-950 border-b border-zinc-800/80 px-4 py-3.5">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+            
+            {/* Calories */}
+            <div className="bg-zinc-900/60 p-2.5 rounded-xl border border-zinc-800">
+              <div className="text-[10px] text-zinc-500 uppercase font-mono tracking-wider">Calories</div>
+              <div className="text-base font-bold text-zinc-100">{currentDay.calories || 0} <span className="text-[10px] font-normal text-zinc-500">/ 1400</span></div>
+              <div className="h-1 bg-zinc-800 rounded-full mt-1.5 overflow-hidden">
+                <div className="h-full bg-zinc-300" style={{ width: `${Math.min(100, ((currentDay.calories || 0) / 1400) * 100)}%` }}></div>
+              </div>
+            </div>
+
+            {/* Net Carbs (30g soft ceiling, 50g hard ceiling) */}
+            <div className={`p-2.5 rounded-xl border ${
+              (currentDay.net_carbs || 0) > 50
+                ? "bg-rose-950/40 border-rose-800 text-rose-300"
+                : (currentDay.net_carbs || 0) > 30
+                ? "bg-amber-950/40 border-amber-800 text-amber-300"
+                : "bg-zinc-900/60 border-zinc-800 text-zinc-100"
+            }`}>
+              <div className="text-[10px] uppercase font-mono tracking-wider flex justify-between items-center">
+                <span>Net Carbs</span>
+                {(currentDay.net_carbs || 0) > 30 && <ShieldAlert size={12} className="text-amber-400" />}
+              </div>
+              <div className="text-base font-bold">{currentDay.net_carbs || 0}g <span className="text-[10px] font-normal opacity-70">/ 30g</span></div>
+              <div className="h-1 bg-zinc-800 rounded-full mt-1.5 overflow-hidden">
+                <div
+                  className={`h-full ${
+                    (currentDay.net_carbs || 0) > 50 ? "bg-rose-500" : (currentDay.net_carbs || 0) > 30 ? "bg-amber-400" : "bg-emerald-400"
+                  }`}
+                  style={{ width: `${Math.min(100, ((currentDay.net_carbs || 0) / 30) * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Protein */}
+            <div className="bg-zinc-900/60 p-2.5 rounded-xl border border-zinc-800">
+              <div className="text-[10px] text-zinc-500 uppercase font-mono tracking-wider">Protein</div>
+              <div className="text-base font-bold text-zinc-100">{currentDay.protein || 0}g <span className="text-[10px] font-normal text-zinc-500">/ 110g</span></div>
+              <div className="h-1 bg-zinc-800 rounded-full mt-1.5 overflow-hidden">
+                <div className="h-full bg-cyan-400" style={{ width: `${Math.min(100, ((currentDay.protein || 0) / 110) * 100)}%` }}></div>
+              </div>
+            </div>
+
+            {/* Fiber */}
+            <div className="bg-zinc-900/60 p-2.5 rounded-xl border border-zinc-800">
+              <div className="text-[10px] text-zinc-500 uppercase font-mono tracking-wider">Dietary Fiber</div>
+              <div className="text-base font-bold text-zinc-100">{currentDay.fiber || 0}g <span className="text-[10px] font-normal text-zinc-500">/ 38g</span></div>
+              <div className="h-1 bg-zinc-800 rounded-full mt-1.5 overflow-hidden">
+                <div className="h-full bg-teal-400" style={{ width: `${Math.min(100, ((currentDay.fiber || 0) / 38) * 100)}%` }}></div>
+              </div>
+            </div>
+
+            {/* Sodium */}
+            <div className="bg-zinc-900/60 p-2.5 rounded-xl border border-zinc-800">
+              <div className="text-[10px] text-zinc-500 uppercase font-mono tracking-wider">Sodium (Na)</div>
+              <div className="text-base font-bold text-zinc-100">{currentDay.sodium || 0} <span className="text-[10px] font-normal text-zinc-500">/ 2500mg</span></div>
+              <div className="h-1 bg-zinc-800 rounded-full mt-1.5 overflow-hidden">
+                <div className="h-full bg-indigo-400" style={{ width: `${Math.min(100, ((currentDay.sodium || 0) / 2500) * 100)}%` }}></div>
+              </div>
+            </div>
+
+            {/* Potassium & Magnesium Combined Card */}
+            <div className="bg-zinc-900/60 p-2.5 rounded-xl border border-zinc-800">
+              <div className="text-[10px] text-zinc-500 uppercase font-mono tracking-wider">K / Mg (mg)</div>
+              <div className="text-base font-bold text-zinc-100">{currentDay.potassium || 0} <span className="text-zinc-500 text-xs">/</span> {currentDay.magnesium || 0}</div>
+              <div className="text-[10px] text-zinc-400 flex justify-between mt-1">
+                <span>K: 3500</span>
+                <span>Mg: 420</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          MAIN TAB CONTENT AREA
+      ========================================================================= */}
+      <main className="flex-1 max-w-4xl w-full mx-auto p-4 space-y-6">
+
+        {/* ----------------- TAB: DASHBOARD ----------------- */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6">
+            
+            {/* Morning Weight & Sleep Quick Log Bar */}
+            <div className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 bg-zinc-800/80 rounded-xl text-zinc-300">
+                  <Activity size={20} />
+                </div>
+                <div>
+                  <div className="text-xs text-zinc-500 uppercase font-mono">Morning Weight</div>
+                  <div className="flex items-baseline space-x-1">
+                    <input
+                      type="number"
+                      step="0.05"
+                      value={currentDay.weight_kg || ''}
+                      placeholder="00.0"
+                      onChange={(e) => updateCurrentDay("weight_kg", parseFloat(e.target.value) || null)}
+                      className="bg-transparent text-xl font-bold font-mono text-zinc-100 w-24 outline-none border-b border-zinc-700 focus:border-zinc-300"
+                    />
+                    <span className="text-xs text-zinc-500 font-mono">kg</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sleep Profile */}
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 bg-zinc-800/80 rounded-xl text-zinc-300">
+                  <Moon size={20} />
+                </div>
+                <div>
+                  <div className="text-xs text-zinc-500 uppercase font-mono">Sleep Duration</div>
+                  <div className="flex items-baseline space-x-1">
+                    <input
+                      type="number"
+                      step="0.25"
+                      value={currentDay.sleep_hours || ''}
+                      placeholder="0.0"
+                      onChange={(e) => updateCurrentDay("sleep_hours", parseFloat(e.target.value) || null)}
+                      className="bg-transparent text-xl font-bold font-mono text-zinc-100 w-16 outline-none border-b border-zinc-700 focus:border-zinc-300"
+                    />
+                    <span className="text-xs text-zinc-500 font-mono">hrs</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bowel Movement Counter */}
+              <div className="flex items-center space-x-3">
+                <div>
+                  <div className="text-xs text-zinc-500 uppercase font-mono">BM Count</div>
+                  <div className="flex items-center space-x-1 mt-1">
+                    {[0, 1, 2].map((num) => (
+                      <button
+                        key={num}
+                        onClick={() => updateCurrentDay("bm_count", num)}
+                        className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-colors ${
+                          currentDay.bm_count === num
+                            ? "bg-zinc-100 text-zinc-900"
+                            : "bg-zinc-800 text-zinc-400 hover:text-white"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 30-Day Weight & Net Carbs Trend Charts */}
+            <div className="bg-zinc-900/40 p-4 rounded-2xl border border-zinc-800 space-y-2">
+              <div className="flex justify-between items-center text-xs text-zinc-400 font-mono">
+                <span>30-Day Weight Trajectory (kg)</span>
+                <span className="text-emerald-400 font-bold">Latest: {currentDay.weight_kg || 88.9} kg</span>
+              </div>
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <XAxis dataKey="date" stroke="#52525b" fontSize={10} tickLine={false} />
+                    <YAxis stroke="#52525b" domain={['dataMin - 1', 'dataMax + 1']} fontSize={10} tickLine={false} orientation="right" />
+                    <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', fontSize: '12px' }} />
+                    <Line type="monotone" dataKey="weight" stroke="#e4e4e7" strokeWidth={2} dot={{ r: 2, fill: '#e4e4e7' }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Desktop Viewport: Full Historical Ledger Matrix */}
+            <div className="hidden lg:block bg-zinc-900/30 rounded-2xl border border-zinc-800 overflow-hidden">
+              <div className="p-3 border-b border-zinc-800 text-xs font-mono text-zinc-400 font-semibold tracking-wider uppercase">
+                Historical Ledger Matrix (Closeout View)
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead className="bg-zinc-950/80 text-zinc-500 border-b border-zinc-800">
+                    <tr>
+                      <th className="py-2.5 px-3">Date</th>
+                      <th className="py-2.5 px-3">Weight</th>
+                      <th className="py-2.5 px-3">Calories</th>
+                      <th className="py-2.5 px-3">Protein</th>
+                      <th className="py-2.5 px-3">Net Carbs</th>
+                      <th className="py-2.5 px-3">Fiber</th>
+                      <th className="py-2.5 px-3">Na / K / Mg</th>
+                      <th className="py-2.5 px-3">Sleep</th>
+                      <th className="py-2.5 px-3">BM</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/60 text-zinc-300">
+                    {Object.entries(ledger).slice(-10).reverse().map(([date, row]) => (
+                      <tr key={date} className={date === selectedDate ? "bg-zinc-800/40" : "hover:bg-zinc-900/30"}>
+                        <td className="py-2 px-3 font-medium text-zinc-100">{date.slice(5)}</td>
+                        <td className="py-2 px-3">{row.weight_kg || '—'} kg</td>
+                        <td className="py-2 px-3">{row.calories || '—'}</td>
+                        <td className="py-2 px-3">{row.protein || '—'}g</td>
+                        <td className="py-2 px-3">
+                          <span className={row.net_carbs > 30 ? "text-amber-400 font-bold" : ""}>
+                            {row.net_carbs || '—'}g
+                          </span>
+                        </td>
+                        <td className="py-2 px-3">{row.fiber || '—'}g</td>
+                        <td className="py-2 px-3 text-zinc-400">{row.sodium || 0}/{row.potassium || 0}/{row.magnesium || 0}</td>
+                        <td className="py-2 px-3">{row.sleep_hours ? `${row.sleep_hours}h` : '—'}</td>
+                        <td className="py-2 px-3">{row.bm_count ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ----------------- TAB: LOG ENTRY (MEALS) ----------------- */}
+        {activeTab === 'log' && (
+          <div className="space-y-6">
+            
+            {/* Meal Input Box with Autocomplete */}
+            <div className="bg-zinc-900/60 p-4 rounded-2xl border border-zinc-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono uppercase tracking-wider text-zinc-400">Meal Natural Language / Pantry Input</span>
+                <div className="flex space-x-1">
+                  {['meal_1', 'meal_2', 'meal_3'].map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setMealInput(prev => ({ ...prev, targetMeal: m }))}
+                      className={`text-xs px-2.5 py-1 rounded-md font-mono transition-colors ${
+                        mealInput.targetMeal === m
+                          ? "bg-zinc-100 text-zinc-950 font-bold"
+                          : "bg-zinc-800 text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      {m.replace('_', ' ').toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  value={mealInput.text}
+                  onChange={(e) => handleMealTextChange(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') parseMealWithGemini(); }}
+                  placeholder="e.g. 3 scrambled eggs with 1 tbsp butter, or type a pantry item..."
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
+                />
+                <button
+                  onClick={parseMealWithGemini}
+                  disabled={isLoading || !mealInput.text.trim()}
+                  className="absolute right-2 top-2 bottom-2 px-3 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-xs font-mono font-medium rounded-lg flex items-center space-x-1 text-zinc-200"
+                >
+                  {isLoading ? <RefreshCw className="animate-spin" size={14} /> : <Sparkles size={14} />}
+                  <span>Parse</span>
+                </button>
+              </div>
+
+              {/* Autocomplete Dropdown */}
+              {autocompleteSuggestions.length > 0 && (
+                <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-1.5 space-y-1 shadow-2xl">
+                  <div className="text-[10px] font-mono text-zinc-500 px-2 py-0.5 uppercase tracking-widest">Matched in Verified Pantry:</div>
+                  {autocompleteSuggestions.map(item => (
+                    <div
+                      key={item.id}
+                      onClick={() => addPantryItemToMeal(item, 100)}
+                      className="px-3 py-2 hover:bg-zinc-900 rounded-lg cursor-pointer flex justify-between items-center text-xs font-mono"
+                    >
+                      <span className="font-medium text-zinc-200">{item.name}</span>
+                      <span className="text-zinc-500">{item.calories} kcal | {item.protein}g P | {item.net_carbs}g NC</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Hierarchical Meal Lists */}
+            {['meal_1', 'meal_2', 'meal_3'].map((mealKey) => {
+              const items = currentDay.meals?.[mealKey] || [];
+              const subtotalP = items.reduce((acc, i) => acc + (i.protein || 0), 0);
+              const subtotalNC = items.reduce((acc, i) => acc + (i.net_carbs || 0), 0);
+              const subtotalCal = items.reduce((acc, i) => acc + (i.calories || 0), 0);
+
+              return (
+                <div key={mealKey} className="bg-zinc-900/40 rounded-2xl border border-zinc-800 p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-mono uppercase tracking-widest text-zinc-400 font-bold">
+                      {mealKey.replace('_', ' ').toUpperCase()}
+                    </span>
+                    <span className="text-xs font-mono text-zinc-500">
+                      {subtotalCal} kcal | <span className="text-cyan-400">{subtotalP.toFixed(1)}g P</span> | <span className="text-amber-400">{subtotalNC.toFixed(1)}g NC</span>
+                    </span>
+                  </div>
+
+                  {items.length === 0 ? (
+                    <div className="text-xs text-zinc-600 font-mono py-2">No entries logged yet.</div>
+                  ) : (
+                    <div className="divide-y divide-zinc-800/80">
+                      {items.map((item) => (
+                        <div key={item.id} className="py-2.5 flex justify-between items-center text-xs">
+                          <div>
+                            <div className="font-medium text-zinc-200">{item.name}</div>
+                            <div className="text-[10px] font-mono text-zinc-500">
+                              {item.calories} kcal • {item.protein}g Protein • {item.net_carbs}g Net Carbs • {item.sodium}mg Na
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const filtered = items.filter(x => x.id !== item.id);
+                              recalculateDayNutrition({ ...(currentDay.meals || {}), [mealKey]: filtered });
+                            }}
+                            className="p-1 text-zinc-600 hover:text-rose-400"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+          </div>
+        )}
+
+        {/* ----------------- TAB: WORKOUT ROUTINES ----------------- */}
+        {activeTab === 'workout' && (
+          <div className="space-y-6">
+
+            {/* Routine Selector Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {[
+                { id: "day_1", label: "Day 1 (Work Circuit)" },
+                { id: "day_2", label: "Day 2 (Work Strength)" },
+                { id: "day_3", label: "Day 3 (Home Dumbbell)" },
+                { id: "day_4", label: "Day 4 (Rest)" }
+              ].map((rt) => (
+                <button
+                  key={rt.id}
+                  onClick={() => updateCurrentDay("active_routine", rt.id)}
+                  className={`p-3 rounded-xl border text-left font-mono transition-all ${
+                    (currentDay.active_routine || "day_1") === rt.id
+                      ? "bg-zinc-100 text-zinc-950 font-bold border-zinc-100"
+                      : "bg-zinc-900/60 text-zinc-400 border-zinc-800 hover:border-zinc-700"
+                  }`}
+                >
+                  <div className="text-[10px] uppercase tracking-widest text-zinc-500">Cycle Routine</div>
+                  <div className="text-xs font-semibold mt-0.5">{rt.label}</div>
+                </button>
+              ))}
+            </div>
+
+            {/* Routine 1 Execution Card (Circuit Format) */}
+            {(currentDay.active_routine || "day_1") === "day_1" && (
+              <div className="bg-zinc-900/40 rounded-2xl border border-zinc-800 p-4 space-y-4">
+                <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-zinc-100">Day 1: Calisthenics Circuit (3 Rounds)</h3>
+                    <p className="text-xs text-zinc-500 font-mono mt-0.5">50s Plank → 90s rest → 4 Pull-ups → 90s rest → 1-2 Chin-ups</p>
+                  </div>
+                  <button
+                    onClick={() => startRestTimer(90, 'Round Rest')}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-950/80 border border-emerald-800 text-emerald-300 rounded-lg text-xs font-mono font-medium hover:bg-emerald-900"
+                  >
+                    <Play size={12} />
+                    <span>90s Rest</span>
+                  </button>
+                </div>
+
+                {/* Circuit Rounds */}
+                <div className="space-y-3">
+                  {[1, 2, 3].map((round) => {
+                    const bench = benchmarks.day_1.circuit[round - 1];
+                    return (
+                      <div key={round} className="bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/80 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                        <div className="font-bold text-zinc-300">Round {round}</div>
+                        
+                        <div className="flex items-center space-x-4">
+                          <div>
+                            <span className="text-[10px] text-zinc-500 block">Plank (sec)</span>
+                            <input
+                              type="number"
+                              defaultValue={bench.plank_sec}
+                              className="w-14 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-center font-bold text-zinc-100"
+                            />
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] text-zinc-500 block">Pull-ups</span>
+                            <input
+                              type="number"
+                              defaultValue={bench.pullup_reps}
+                              className="w-14 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-center font-bold text-zinc-100"
+                            />
+                          </div>
+
+                          <div>
+                            <span className="text-[10px] text-zinc-500 block">Chin-ups</span>
+                            <input
+                              type="number"
+                              defaultValue={bench.chinup_reps}
+                              className="w-14 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-center font-bold text-zinc-100"
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => startRestTimer(bench.rest_sec, `R${round} Rest`)}
+                          className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px]"
+                        >
+                          Autofill
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Post-circuit Parallel Bar */}
+                <div className="border-t border-zinc-800/80 pt-3">
+                  <div className="text-xs font-semibold text-zinc-300 font-mono mb-2">Parallel Bar Inclined Chin-ups (3 Sets × 5 Reps)</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1, 2, 3].map((s) => (
+                      <div key={s} className="bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 text-center text-xs font-mono">
+                        <div className="text-[10px] text-zinc-500">Set {s}</div>
+                        <input type="number" defaultValue={5} className="w-12 bg-zinc-900 border border-zinc-800 rounded px-1 py-1 text-center font-bold mt-1" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Routine 2 Execution Card */}
+            {(currentDay.active_routine || "day_1") === "day_2" && (
+              <div className="bg-zinc-900/40 rounded-2xl border border-zinc-800 p-4 space-y-4">
+                <h3 className="text-sm font-bold text-zinc-100">Day 2: Work Calisthenics & Strength</h3>
+                <div className="space-y-3 font-mono text-xs">
+                  {[
+                    { name: "Slow Bodyweight Squats", sets: "3 × 20 reps", rest: 90 },
+                    { name: "Bench Incline Push-ups", sets: "3 × 10 reps", rest: 90 },
+                    { name: "Bench Dips", sets: "3 × 8 reps", rest: 90 },
+                    { name: "Decline Bench Sit-ups", sets: "3 × 12 reps", rest: 90 }
+                  ].map((ex, idx) => (
+                    <div key={idx} className="bg-zinc-950/60 p-3 rounded-xl border border-zinc-800 flex justify-between items-center">
+                      <div>
+                        <div className="font-semibold text-zinc-200">{ex.name}</div>
+                        <div className="text-[10px] text-zinc-500">{ex.sets} • {ex.rest}s rest</div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button onClick={() => startRestTimer(ex.rest, ex.name)} className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px]">
+                          Autofill
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Routine 3 Execution Card */}
+            {(currentDay.active_routine || "day_1") === "day_3" && (
+              <div className="bg-zinc-900/40 rounded-2xl border border-zinc-800 p-4 space-y-4">
+                <h3 className="text-sm font-bold text-zinc-100">Day 3: Home 5kg Dumbbells & Core</h3>
+                <div className="space-y-3 font-mono text-xs">
+                  {[
+                    { name: "5kg DB Goblet Bed Squats", sets: "3 × 12 reps", rest: 90 },
+                    { name: "Alternating Knee Raises (1-2s hold)", sets: "3 × 12-15 reps", rest: 60 },
+                    { name: "Clamshell + Side Leg Raise Superset", sets: "3 × 12 reps", rest: 60 },
+                    { name: "Deadbugs", sets: "3 × 12 reps", rest: 90 }
+                  ].map((ex, idx) => (
+                    <div key={idx} className="bg-zinc-950/60 p-3 rounded-xl border border-zinc-800 flex justify-between items-center">
+                      <div>
+                        <div className="font-semibold text-zinc-200">{ex.name}</div>
+                        <div className="text-[10px] text-zinc-500">{ex.sets} • {ex.rest}s rest</div>
+                      </div>
+                      <button onClick={() => startRestTimer(ex.rest, ex.name)} className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[11px]">
+                        Autofill
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Routine 4: Rest Day */}
+            {(currentDay.active_routine || "day_1") === "day_4" && (
+              <div className="bg-zinc-900/40 rounded-2xl border border-zinc-800 p-6 text-center space-y-2 font-mono">
+                <CheckCircle2 size={32} className="mx-auto text-emerald-400" />
+                <h3 className="text-sm font-bold text-zinc-100">Rest & Recovery Day</h3>
+                <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                  Focus on full electrolyte rehydration (Sodium >= 2,500mg, Potassium >= 3,500mg) and deep restorative sleep.
+                </p>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* ----------------- TAB: VERIFIED PANTRY ----------------- */}
+        {activeTab === 'pantry' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-sm font-bold text-zinc-100 font-mono">Verified Pantry Library</h3>
+                <p className="text-xs text-zinc-500">Official source of truth for deterministic nutrition calculation.</p>
+              </div>
+              <label className="flex items-center space-x-1.5 px-3 py-1.5 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-mono font-bold rounded-lg cursor-pointer">
+                <Camera size={14} />
+                <span>Scan Label</span>
+                <input type="file" accept="image/*" capture="environment" onChange={handlePhotoUpload} className="hidden" />
+              </label>
+            </div>
+
+            {pantry.length === 0 ? (
+              <div className="bg-zinc-900/40 rounded-2xl border border-dashed border-zinc-800 p-8 text-center space-y-3">
+                <Database size={28} className="mx-auto text-zinc-600" />
+                <p className="text-xs font-mono text-zinc-400">Your pantry is clean. Snap a photo of any back-of-pack nutrition panel to verify and save it.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {pantry.map((item) => (
+                  <div key={item.id} className="bg-zinc-900/40 p-3.5 rounded-xl border border-zinc-800 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <span className="font-semibold text-xs text-zinc-100">{item.name}</span>
+                      <button
+                        onClick={() => setPantry(pantry.filter(x => x.id !== item.id))}
+                        className="text-zinc-600 hover:text-rose-400"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <div className="text-[11px] font-mono text-zinc-400 grid grid-cols-3 gap-1">
+                      <div>{item.calories} kcal</div>
+                      <div>{item.protein}g Protein</div>
+                      <div>{item.net_carbs}g NetCarb</div>
+                      <div>{item.sodium}mg Na</div>
+                      <div>{item.potassium}mg K</div>
+                      <div>{item.magnesium}mg Mg</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ----------------- TAB: REACTIVE AI ADVISOR ----------------- */}
+        {activeTab === 'advisor' && (
+          <div className="bg-zinc-900/40 rounded-2xl border border-zinc-800 p-4 space-y-4 font-mono">
+            <div className="flex items-center space-x-2 border-b border-zinc-800 pb-3">
+              <Bot size={20} className="text-zinc-300" />
+              <div>
+                <h3 className="text-sm font-bold text-zinc-100">Reactive Keto & Shift Advisor</h3>
+                <p className="text-[10px] text-zinc-500">Grounded in your 14-day history, shift patterns, and electrolyte levels.</p>
+              </div>
+            </div>
+
+            <div className="text-xs text-zinc-400 bg-zinc-950 p-3 rounded-xl border border-zinc-800/80 leading-relaxed">
+              "You are on a <span className="text-zinc-200 font-bold">{currentDay.shift}</span> schedule. Your 7-day average net carbs are <span className="text-zinc-200 font-bold">34.2g</span> and potassium is averaging <span className="text-zinc-200 font-bold">3,180mg</span>. Tap a query below or type a question."
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+              {[
+                "Why is my weight plateaued this week despite caloric deficit?",
+                "How should I split my electrolyte intake for my upcoming PM shift?",
+                "Adjust my Day 1 circuit if my pull-up reps drop to 2.",
+                "Review my magnesium balance against sleep quality."
+              ].map((q, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => alert(`Prompt context attached with your latest logs:\n"${q}"`)}
+                  className="p-2.5 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-left rounded-xl text-zinc-300 transition-colors flex justify-between items-center"
+                >
+                  <span>{q}</span>
+                  <ArrowUpRight size={14} className="text-zinc-500 shrink-0 ml-2" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ----------------- TAB: SETTINGS & API KEY ----------------- */}
+        {activeTab === 'settings' && (
+          <div className="bg-zinc-900/40 rounded-2xl border border-zinc-800 p-4 space-y-5 font-mono text-xs">
+            <h3 className="text-sm font-bold text-zinc-100 border-b border-zinc-800 pb-2">App Credentials & Free Tier Settings</h3>
+            
+            <div className="space-y-1.5">
+              <label className="text-zinc-400 block font-semibold">Gemini Flash API Key (Free Tier)</label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="AIzaSy..."
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-zinc-100 outline-none focus:border-zinc-500"
+              />
+              <p className="text-[10px] text-zinc-500">Stored strictly on your device localStorage. 100% free under Google AI Studio limits.</p>
+            </div>
+
+            <div className="space-y-1.5 border-t border-zinc-800 pt-3">
+              <label className="text-zinc-400 block font-semibold">Blueprint Nutritional Targets</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>Net Carb Soft Ceiling: <span className="text-zinc-200 font-bold">30g</span></div>
+                <div>Net Carb Hard Ceiling: <span className="text-zinc-200 font-bold">50g</span></div>
+                <div>Fiber Daily Floor: <span className="text-zinc-200 font-bold">38g</span></div>
+                <div>Protein Target Floor: <span className="text-zinc-200 font-bold">110g</span></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* =========================================================================
+          NUTRITION LABEL SCANNER OCR MODAL
+      ========================================================================= */}
+      {ocrModal.open && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-md w-full p-5 space-y-4 font-mono text-xs">
+            <h3 className="text-sm font-bold text-zinc-100 flex items-center space-x-2">
+              <Camera size={16} />
+              <span>Nutrition Label OCR Verification</span>
+            </h3>
+
+            {ocrModal.isProcessing ? (
+              <div className="py-8 text-center space-y-2">
+                <RefreshCw className="animate-spin mx-auto text-zinc-400" size={24} />
+                <p className="text-zinc-500">Extracting official packaging values...</p>
+              </div>
+            ) : ocrModal.item ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] text-zinc-500 uppercase">Item Name</label>
+                  <input
+                    type="text"
+                    defaultValue={ocrModal.item.name}
+                    id="ocr_name"
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-zinc-100 font-bold mt-0.5"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] text-zinc-500 uppercase">Calories</label>
+                    <input type="number" defaultValue={ocrModal.item.calories} id="ocr_cal" className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 mt-0.5" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-500 uppercase">Protein (g)</label>
+                    <input type="number" defaultValue={ocrModal.item.protein} id="ocr_p" className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 mt-0.5" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-500 uppercase">Net Carbs (g)</label>
+                    <input type="number" defaultValue={ocrModal.item.net_carbs} id="ocr_nc" className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 mt-0.5" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-500 uppercase">Sodium (mg)</label>
+                    <input type="number" defaultValue={ocrModal.item.sodium} id="ocr_na" className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 mt-0.5" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-500 uppercase">Potassium (mg)</label>
+                    <input type="number" defaultValue={ocrModal.item.potassium} id="ocr_k" className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 mt-0.5" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-zinc-500 uppercase">Magnesium (mg)</label>
+                    <input type="number" defaultValue={ocrModal.item.magnesium} id="ocr_mg" className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 mt-0.5" />
+                  </div>
+                </div>
+
+                <div className="flex space-x-2 pt-2">
+                  <button
+                    onClick={() => {
+                      const verified = {
+                        id: Date.now().toString(),
+                        name: document.getElementById('ocr_name').value,
+                        base_grams: 100,
+                        calories: parseFloat(document.getElementById('ocr_cal').value) || 0,
+                        protein: parseFloat(document.getElementById('ocr_p').value) || 0,
+                        net_carbs: parseFloat(document.getElementById('ocr_nc').value) || 0,
+                        sodium: parseFloat(document.getElementById('ocr_na').value) || 0,
+                        potassium: parseFloat(document.getElementById('ocr_k').value) || 0,
+                        magnesium: parseFloat(document.getElementById('ocr_mg').value) || 0,
+                      };
+                      setPantry(prev => [...prev, verified]);
+                      setOcrModal({ open: false, item: null, isProcessing: false });
+                    }}
+                    className="flex-1 py-2 bg-zinc-100 hover:bg-white text-zinc-950 font-bold rounded-xl"
+                  >
+                    Commit to Verified Pantry
+                  </button>
+                  <button
+                    onClick={() => setOcrModal({ open: false, item: null, isProcessing: false })}
+                    className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          BOTTOM TAB NAVIGATION (iOS Safe Area Ergonomics)
+      ========================================================================= */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#09090b]/95 backdrop-blur-lg border-t border-zinc-800 px-4 py-2 pb-safe">
+        <div className="max-w-md mx-auto flex justify-between items-center text-[10px] font-mono">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: Activity },
+            { id: 'log', label: 'Log Food', icon: Utensils },
+            { id: 'workout', label: 'Workout', icon: Dumbbell },
+            { id: 'pantry', label: 'Pantry', icon: Database },
+            { id: 'advisor', label: 'Advisor', icon: Bot },
+            { id: 'settings', label: 'Settings', icon: Settings },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isSelected = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex flex-col items-center py-1 px-2 rounded-xl transition-all ${
+                  isSelected ? "text-zinc-100 font-bold" : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                <Icon size={18} strokeWidth={isSelected ? 2.5 : 1.8} />
+                <span className="mt-1">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+    </div>
+  );
+}

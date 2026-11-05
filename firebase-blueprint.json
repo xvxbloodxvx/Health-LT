@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "DayLedgerEntry": {
+      "title": "DayLedgerEntry",
+      "description": "Daily nutrition, biometrics, shift status, meals, and workouts for a single date.",
+      "type": "object",
+      "properties": {
+        "calories": { "type": "number", "description": "Total Atwater calories" },
+        "protein": { "type": "number", "description": "Total protein in grams" },
+        "net_carbs": { "type": "number", "description": "Net carbs in grams" },
+        "fiber": { "type": "number", "description": "Dietary fiber in grams" },
+        "fat": { "type": "number", "description": "Fat in grams" },
+        "sodium": { "type": "number", "description": "Sodium in milligrams" },
+        "potassium": { "type": "number", "description": "Potassium in milligrams" },
+        "magnesium": { "type": "number", "description": "Magnesium in milligrams" },
+        "calcium": { "type": "number", "description": "Calcium in milligrams" },
+        "shift": { "type": "string", "description": "AM Work, PM Work, Standby, or Rest" }
+      }
+    },
+    "PantryCollection": {
+      "title": "PantryCollection",
+      "description": "Verified custom pantry items for the user.",
+      "type": "object",
+      "properties": {
+        "items": { "type": "array", "description": "List of pantry items" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" }
+      }
+    },
+    "BenchmarkCollection": {
+      "title": "BenchmarkCollection",
+      "description": "Workout benchmarks across routine days.",
+      "type": "object",
+      "properties": {
+        "benchmarks": { "type": "object", "description": "Benchmark configurations" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}/data/ledger": {
+      "schema": "DayLedgerEntry",
+      "description": "User master daily logs map"
+    },
+    "/users/{userId}/data/pantry": {
+      "schema": "PantryCollection",
+      "description": "User verified pantry items"
+    },
+    "/users/{userId}/data/benchmarks": {
+      "schema": "BenchmarkCollection",
+      "description": "User workout routines and benchmarks"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 16px));
+  }
+}
+
+html, body {
+  background-color: #09090b;
+  color: #f4f4f5;
+  min-height: 100%;
+}
+
+/* Hide number input spin buttons (add/subtract stepper arrows) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

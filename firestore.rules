@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global deny-all fallback
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Health LT application user documents
+    match /users/{userId}/data/{docId} {
+      allow read, write: if isSignedIn()
+        && isValidId(userId)
+        && isValidId(docId)
+        && request.auth.uid == userId;
+    }
+  }
+}
